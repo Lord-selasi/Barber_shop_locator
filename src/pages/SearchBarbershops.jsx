@@ -41,9 +41,12 @@ const SearchBarbershops = () => {
     const url = `http://127.0.0.1:5000/api/barbershops?lat=${position[0]}&lng=${position[1]}&radius=${radius}`;
     console.log(`Fetching barbershops from URL: ${url}`);
     fetch(url)
-      .then((response) => response.json())
+      .then((response) => {
+        console.log("Response received:", response);
+        return response.json();
+      })
       .then((data) => {
-        console.log("Parsed JSON data:", data);
+        console.log("Parsed JSON data:", data); // Log the received data
         if (data.error) {
           setError(data.error);
           setBarbershops([]);
@@ -58,13 +61,14 @@ const SearchBarbershops = () => {
               shop.longitude
             ),
           }));
+          console.log("Updated Barbershops:", updatedBarbershops); // Log updated barbershops
           setBarbershops(
             updatedBarbershops.sort((a, b) => a.distance - b.distance)
           );
         }
       })
       .catch((err) => {
-        console.error(err);
+        console.error("Failed to fetch barbershops:", err);
         setError("Failed to fetch barbershops");
         setBarbershops([]);
       });
@@ -98,12 +102,10 @@ const SearchBarbershops = () => {
     const φ2 = (lat2 * Math.PI) / 180;
     const Δφ = ((lat2 - lat1) * Math.PI) / 180;
     const Δλ = ((lng2 - lng1) * Math.PI) / 180;
-
     const a =
       Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
       Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
     const d = R * c; // in metres
     return d.toFixed(2);
   };
@@ -124,7 +126,7 @@ const SearchBarbershops = () => {
   };
 
   return (
-    <div style={{ textAlign: "center" }}>
+    <div className="container" style={{ textAlign: "center" }}>
       <h2>Search Barbershops</h2>
       <input
         type="number"
@@ -145,11 +147,7 @@ const SearchBarbershops = () => {
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {barbershops.map((shop, idx) =>
           selectedBarbershop && selectedBarbershop !== shop ? null : (
-            <Marker
-              key={idx}
-              position={[shop.latitude, shop.longitude]}
-              // Reverted to default icon
-            >
+            <Marker key={idx} position={[shop.latitude, shop.longitude]}>
               <Popup>
                 {shop.name} <br /> {shop.address}
                 <br />
@@ -161,7 +159,7 @@ const SearchBarbershops = () => {
           )
         )}
         {position && (
-          <Marker position={position} /* Reverted to default icon */>
+          <Marker position={position}>
             <Popup>Your Current Position</Popup>
           </Marker>
         )}
@@ -173,6 +171,7 @@ const SearchBarbershops = () => {
           {barbershops.map((shop, idx) => (
             <li
               key={idx}
+              className="barbershop-card"
               style={{
                 display:
                   selectedBarbershop && selectedBarbershop !== shop
@@ -180,10 +179,14 @@ const SearchBarbershops = () => {
                     : "block",
               }}
             >
-              {shop.name} - {shop.distance} meters away
-              <button onClick={() => handleSelectBarbershop(shop)}>
-                Show on Map
-              </button>
+              <div className="barbershop-info">
+                <strong>{shop.name}</strong>
+                <p>{shop.address}</p>
+                <p>{shop.distance} meters away</p>
+                <button onClick={() => handleSelectBarbershop(shop)}>
+                  Show on Map
+                </button>
+              </div>
             </li>
           ))}
         </ul>

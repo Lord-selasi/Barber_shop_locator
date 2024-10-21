@@ -58,3 +58,55 @@
 .barbershop-info {
   text-align: left;
 }
+.barbershop-card {
+  background: rgba(255, 255, 255, 0.9); /* Slight transparency */
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin: 10px;
+  padding: 20px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.barbershop-card:hover {
+  transform: scale(1.05); /* Scale on hover */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.barbershop-info {
+  text-align: left;
+  font-size: 1.1em;
+  color: #c60f0f;
+}
+
+input {
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  width: 80%;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+input:focus {
+  outline: none;
+  box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
+}
+
+button {
+  background-color: #f76c6c; /* Light red */
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+button:hover {
+  background-color: #ff4a4a;
+  transform: translateY(-2px);
+}
