@@ -52,11 +52,11 @@ const AddCity = () => {
         type="text"
         value={cityName}
         onChange={(e) => setCityName(e.target.value)}
-        placeholder="City Name"
+        placeholder="Enter City Name"
       />
       <MapContainer
         center={[51.505, -0.09]}
-        zoom={5}
+        zoom={13}
         style={{ height: "50vh", width: "100%" }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />

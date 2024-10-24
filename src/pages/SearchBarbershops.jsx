@@ -139,8 +139,8 @@ const SearchBarbershops = () => {
       <button onClick={handleSearch}>Search</button>
       {error && <p style={{ color: "red" }}>{error}</p>}
       <MapContainer
-        center={position || [40.7128, -74.006]}
-        zoom={13}
+        center={position || [45.550288, -94.1555175]}
+        zoom={25}
         style={{ height: "50vh", width: "100%" }}
         whenReady={(map) => position && map.target.setView(position, 13)}
       >
@@ -160,7 +160,7 @@ const SearchBarbershops = () => {
         )}
         {position && (
           <Marker position={position}>
-            <Popup>Your Current Position</Popup>
+            <Popup>My Location</Popup>
           </Marker>
         )}
         {renderDirections()}
