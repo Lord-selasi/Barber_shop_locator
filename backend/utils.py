@@ -1,7 +1,12 @@
 import requests
 import redis
+from dotenv import load_dotenv
+import os
 
-API_KEY = 'AIzaSyALxdmN2PjiludHEEaS1-2naY6V3KepK-k'
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
+
+
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 def fetch_barbershops_from_google(lat, lng, radius):
