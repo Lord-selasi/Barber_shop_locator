@@ -21,3 +21,4 @@ def find_city(city_name):
         'latitude': city.location.y,
         'longitude': city.location.x
     })
+

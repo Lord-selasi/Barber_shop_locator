@@ -21,8 +21,7 @@ const AddCity = () => {
       setMessage("Please enter a city name and select a position on the map.");
       return;
     }
-
-    fetch("/api/cities", {
+    fetch("http://127.0.0.1:5000/api/cities", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -46,24 +45,27 @@ const AddCity = () => {
   };
 
   return (
-    <div>
+    <div className="container" style={{ textAlign: "center" }}>
       <h2>Add New City</h2>
       <input
         type="text"
         value={cityName}
         onChange={(e) => setCityName(e.target.value)}
         placeholder="Enter City Name"
+        style={{ width: "300px", marginBottom: "10px", padding: "10px" }}
       />
       <MapContainer
         center={[51.505, -0.09]}
         zoom={13}
-        style={{ height: "50vh", width: "100%" }}
+        style={{ height: "50vh", width: "100%", marginBottom: "10px" }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <MapClickHandler />
         {position && <Marker position={position}></Marker>}
       </MapContainer>
-      <button onClick={handleAddCity}>Add City</button>
+      <button onClick={handleAddCity} style={{ padding: "10px 20px" }}>
+        Add City
+      </button>
       {message && <p>{message}</p>}
     </div>
   );
