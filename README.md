@@ -36,7 +36,7 @@ To set up the Barbershop Locator project locally, follow these steps:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/barbershop-locator.git
+   git clone https://github.com/Lord-selasi/Barber_shop_locator.git
    cd barbershop-locator
    ```
 2. Install dependencies: No Node.js is used in this project, but ensure you have Python and Flask set up.
