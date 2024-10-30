@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-
-# Barber_shop_locator
-
-An application that helps users locate barber shops within a specific radius, offering additional features like reviews, distance calculations, and service-based filtering.
-
 # Barbershop Locator
 
 Welcome to the Barbershop Locator project! This application allows users to search for nearby barbershops, add new cities, and view directions to selected barbershops using a user-friendly map interface.
