@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 const AddCity = () => {
   const [cityName, setCityName] = useState("");
@@ -10,7 +12,7 @@ const AddCity = () => {
     useMapEvents({
       click: (e) => {
         setPosition([e.latlng.lat, e.latlng.lng]);
-        setMessage(""); // Clear any previous messages
+        setMessage("");
       },
     });
     return null;
@@ -35,7 +37,7 @@ const AddCity = () => {
       .then((response) => response.json())
       .then((data) => {
         setMessage("City added successfully!");
-        setCityName(""); // Clear the input fields
+        setCityName("");
         setPosition(null);
       })
       .catch((err) => {
@@ -45,14 +47,32 @@ const AddCity = () => {
   };
 
   return (
-    <div className="container" style={{ textAlign: "center" }}>
-      <h2>Add New City</h2>
+    <div className="container text-center mt-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2
+          className="text-primary fw-bold"
+          style={{
+            fontSize: "2rem",
+            textShadow: "2px 2px 5px rgba(0, 0, 0, 0.3)",
+            letterSpacing: "1px",
+            background: "linear-gradient(45deg, #007bff, #6610f2)",
+            WebkitBackgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          Add New City
+        </h2>
+        <Link to="/" className="btn btn-secondary">
+          Home
+        </Link>
+      </div>
       <input
         type="text"
         value={cityName}
         onChange={(e) => setCityName(e.target.value)}
         placeholder="Enter City Name"
-        style={{ width: "300px", marginBottom: "10px", padding: "10px" }}
+        className="form-control mb-3"
+        style={{ maxWidth: "300px", margin: "0 auto" }}
       />
       <MapContainer
         center={[51.505, -0.09]}
@@ -63,10 +83,18 @@ const AddCity = () => {
         <MapClickHandler />
         {position && <Marker position={position}></Marker>}
       </MapContainer>
-      <button onClick={handleAddCity} style={{ padding: "10px 20px" }}>
+      <button onClick={handleAddCity} className="btn btn-primary mb-3">
         Add City
       </button>
-      {message && <p>{message}</p>}
+      {message && (
+        <p
+          className={
+            message.includes("successfully") ? "text-success" : "text-danger"
+          }
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 };
