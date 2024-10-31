@@ -8,10 +8,11 @@ import {
   Polyline,
   Tooltip,
 } from "react-leaflet";
-import "bootstrap/dist/css/bootstrap.min.css"; // Ensure Bootstrap is imported
-import "leaflet/dist/leaflet.css";
+import "bootstrap/dist/css/bootstrap.min.css"; // Importing Bootstrap for styling
+import "leaflet/dist/leaflet.css"; // Importing Leaflet CSS for the map
 
 const SearchBarbershops = () => {
+  // State variables for user location, search radius, fetched barbershops, selected barbershop, errors, and route polyline
   const [position, setPosition] = useState(null);
   const [radius, setRadius] = useState("");
   const [barbershops, setBarbershops] = useState([]);
@@ -19,15 +20,16 @@ const SearchBarbershops = () => {
   const [error, setError] = useState(null);
   const [routePolyline, setRoutePolyline] = useState([]);
 
+  // useEffect hook to get the user's current location on component mount
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setPosition([latitude, longitude]);
+          setPosition([latitude, longitude]); // Set the user's position
         },
         (error) => {
-          setError(error.message);
+          setError(error.message); // Set an error message if geolocation fails
         }
       );
     } else {
@@ -35,12 +37,14 @@ const SearchBarbershops = () => {
     }
   }, []);
 
+  // Function to search for barbershops within the specified radius
   const handleSearch = () => {
     if (!radius) {
       setError("Please enter a radius");
       return;
     }
 
+    // Fetch barbershops from backend API
     const url = `http://127.0.0.1:5000/api/barbershops?lat=${position[0]}&lng=${position[1]}&radius=${radius}`;
     fetch(url)
       .then((response) => response.json())
@@ -50,6 +54,7 @@ const SearchBarbershops = () => {
           setBarbershops([]);
         } else {
           setError(null);
+          // Calculate distance for each shop and sort by distance
           const updatedBarbershops = data.map((shop) => ({
             ...shop,
             distance: calculateDistance(
@@ -65,14 +70,16 @@ const SearchBarbershops = () => {
         }
       })
       .catch((err) => {
-        setError("Failed to fetch barbershops");
+        setError("Failed to fetch barbershops"); // Error if fetch fails
         setBarbershops([]);
       });
   };
 
+  // Function to select a barbershop and fetch route directions
   const handleSelectBarbershop = (shop) => {
     setSelectedBarbershop(shop);
 
+    // Fetch directions from API
     const url = `http://127.0.0.1:5000/api/directions?origin_lat=${position[0]}&origin_lng=${position[1]}&dest_lat=${shop.latitude}&dest_lng=${shop.longitude}`;
     fetch(url)
       .then((response) => response.json())
@@ -80,6 +87,7 @@ const SearchBarbershops = () => {
         if (data.error) {
           setError(data.error);
         } else {
+          // Set route polyline using fetched coordinates
           const routePolyline = data.polyline.map((point) => [
             point[0],
             point[1],
@@ -92,8 +100,9 @@ const SearchBarbershops = () => {
       });
   };
 
+  // Function to calculate distance between two geographic points
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
-    const R = 6371e3;
+    const R = 6371e3; // Earth radius in meters
     const φ1 = (lat1 * Math.PI) / 180;
     const φ2 = (lat2 * Math.PI) / 180;
     const Δφ = ((lat2 - lat1) * Math.PI) / 180;
@@ -103,9 +112,10 @@ const SearchBarbershops = () => {
       Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const d = R * c;
-    return d.toFixed(2);
+    return d.toFixed(2); // Return distance
   };
 
+  // Function to render the polyline on the map if a route is available
   const renderDirections = () => {
     if (!routePolyline || routePolyline.length === 0) return null;
 
@@ -122,7 +132,7 @@ const SearchBarbershops = () => {
         <h2
           className="text-primary fw-bold"
           style={{
-            fontSize: "2rem", // Reduced font size
+            fontSize: "2rem",
             textShadow: "2px 2px 5px rgba(0, 0, 0, 0.3)",
             letterSpacing: "1px",
             background: "linear-gradient(45deg, #007bff, #6610f2)",
