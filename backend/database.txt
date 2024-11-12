@@ -1,0 +1,37 @@
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+ -- Create City table with PostGIS point geometry
+CREATE TABLE city (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(80) NOT NULL,
+    location GEOGRAPHY(POINT, 4326) NOT NULL  -- Use geography type with SRID 4326 (WGS84)
+);
+
+-- Create Barbershop table with foreign key to City and PostGIS point geometry
+CREATE TABLE barbershop (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(80) NOT NULL,
+    address VARCHAR(200),
+    city_id INTEGER REFERENCES city(id),
+    phone VARCHAR(20),
+    website VARCHAR(100),
+    location GEOGRAPHY(POINT, 4326) NOT NULL  -- Use geography type with SRID 4326
+);
+
+-- Create Review table with foreign key to Barbershop
+CREATE TABLE review (
+    id SERIAL PRIMARY KEY,
+    barbershop_id INTEGER REFERENCES barbershop(id),
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),  -- Rating must be between 1 and 5
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create BarberReview table with foreign key to Barbershop
+CREATE TABLE barber_review (
+    id SERIAL PRIMARY KEY,
+    barbershop_id INTEGER REFERENCES barbershop(id),
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),  -- Rating must be between 1 and 5
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
