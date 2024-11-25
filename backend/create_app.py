@@ -19,9 +19,11 @@ def create_app():
     from models import City, Barbershop
     from routes.barbershop_routes import barbershop_bp
     from routes.city_routes import city_bp
+    from routes.reviews_routes import barbershop_bp 
 
     app.register_blueprint(barbershop_bp)
     app.register_blueprint(city_bp)
+    #app.register_blueprint(barbershop_bp)
 
     with app.app_context():
         db.create_all()
