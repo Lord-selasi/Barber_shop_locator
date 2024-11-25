@@ -15,16 +15,26 @@ class Barbershop(db.Model):
     website = db.Column(db.String(100))
     location = db.Column(Geometry('POINT'), nullable=False)
 
+# class Review(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     barbershop_id = db.Column(db.Integer, db.ForeignKey('barbershop.id'))
+#     rating = db.Column(db.Integer, nullable=False)  # Added nullable=False for rating
+#     comment = db.Column(db.Text)
+#     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    barbershop_id = db.Column(db.Integer, db.ForeignKey('barbershop.id'))
-    rating = db.Column(db.Integer, nullable=False)  # Added nullable=False for rating
+    place_id = db.Column(db.String(50), nullable=False)  # Google Places API place_id
+    rating = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.Text)
+    user_lat = db.Column(db.Float, nullable=False)  # User's latitude
+    user_lng = db.Column(db.Float, nullable=False)  # User's longitude
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
-class BarberReview(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    barbershop_id = db.Column(db.Integer, db.ForeignKey('barbershop.id'))
-    rating = db.Column(db.Integer, nullable=False)  # Added nullable=False for rating
-    comment = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+# class BarberReview(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     barbershop_id = db.Column(db.Integer, db.ForeignKey('barbershop.id'))
+#     rating = db.Column(db.Integer, nullable=False)  # Added nullable=False for rating
+#     comment = db.Column(db.Text)
+#     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
