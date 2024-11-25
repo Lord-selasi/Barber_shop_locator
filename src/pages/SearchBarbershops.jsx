@@ -12,24 +12,24 @@ import "bootstrap/dist/css/bootstrap.min.css"; // Importing Bootstrap for stylin
 import "leaflet/dist/leaflet.css"; // Importing Leaflet CSS for the map
 
 const SearchBarbershops = () => {
-  // State variables for user location, search radius, fetched barbershops, selected barbershop, errors, and route polyline
-  const [position, setPosition] = useState(null);
-  const [radius, setRadius] = useState("");
-  const [barbershops, setBarbershops] = useState([]);
-  const [selectedBarbershop, setSelectedBarbershop] = useState(null);
-  const [error, setError] = useState(null);
-  const [routePolyline, setRoutePolyline] = useState([]);
+  const [position, setPosition] = useState(null); // User's location
+  const [radius, setRadius] = useState(""); // Search radius
+  const [barbershops, setBarbershops] = useState([]); // List of barbershops
+  const [selectedBarbershop, setSelectedBarbershop] = useState(null); // Selected barbershop
+  const [reviews, setReviews] = useState([]); // Reviews for the selected barbershop
+  const [error, setError] = useState(null); // Error messages
+  const [routePolyline, setRoutePolyline] = useState([]); // Route directions
 
-  // useEffect hook to get the user's current location on component mount
+  // useEffect to get the user's current location on component mount
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setPosition([latitude, longitude]); // Set the user's position
+          setPosition([latitude, longitude]);
         },
         (error) => {
-          setError(error.message); // Set an error message if geolocation fails
+          setError(error.message);
         }
       );
     } else {
@@ -44,7 +44,6 @@ const SearchBarbershops = () => {
       return;
     }
 
-    // Fetch barbershops from backend API
     const url = `http://127.0.0.1:5000/api/barbershops?lat=${position[0]}&lng=${position[1]}&radius=${radius}`;
     fetch(url)
       .then((response) => response.json())
@@ -54,7 +53,6 @@ const SearchBarbershops = () => {
           setBarbershops([]);
         } else {
           setError(null);
-          // Calculate distance for each shop and sort by distance
           const updatedBarbershops = data.map((shop) => ({
             ...shop,
             distance: calculateDistance(
@@ -69,25 +67,21 @@ const SearchBarbershops = () => {
           );
         }
       })
-      .catch((err) => {
-        setError("Failed to fetch barbershops"); // Error if fetch fails
-        setBarbershops([]);
-      });
+      .catch(() => setError("Failed to fetch barbershops"));
   };
 
-  // Function to select a barbershop and fetch route directions
+  // Function to select a barbershop, fetch directions and reviews
   const handleSelectBarbershop = (shop) => {
     setSelectedBarbershop(shop);
 
-    // Fetch directions from API
-    const url = `http://127.0.0.1:5000/api/directions?origin_lat=${position[0]}&origin_lng=${position[1]}&dest_lat=${shop.latitude}&dest_lng=${shop.longitude}`;
-    fetch(url)
+    // Fetch directions
+    const directionsUrl = `http://127.0.0.1:5000/api/directions?origin_lat=${position[0]}&origin_lng=${position[1]}&dest_lat=${shop.latitude}&dest_lng=${shop.longitude}`;
+    fetch(directionsUrl)
       .then((response) => response.json())
       .then((data) => {
         if (data.error) {
           setError(data.error);
         } else {
-          // Set route polyline using fetched coordinates
           const routePolyline = data.polyline.map((point) => [
             point[0],
             point[1],
@@ -95,9 +89,47 @@ const SearchBarbershops = () => {
           setRoutePolyline(routePolyline);
         }
       })
-      .catch((err) => {
-        setError("Failed to fetch directions");
+      .catch(() => setError("Failed to fetch directions"));
+
+    // Fetch reviews
+    const reviewsUrl = `http://127.0.0.1:5000/api/barbershops/${shop.place_id}/reviews`;
+    fetch(reviewsUrl)
+      .then((response) => response.json())
+      .then((data) => setReviews(data))
+      .catch(() => setError("Failed to fetch reviews"));
+  };
+
+  // Function to add a review
+  const handleAddReview = (placeId, rating, comment) => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        fetch(`http://127.0.0.1:5000/api/barbershops/${placeId}/reviews`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            rating,
+            comment,
+            user_lat: userLat, // Send user's latitude
+            user_lng: userLng, // Send user's longitude
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => alert(data.message)) // Alert success message
+          .then(() =>
+            fetch(`http://127.0.0.1:5000/api/barbershops/${placeId}/reviews`)
+          )
+          .then((response) => response.json())
+          .then((updatedReviews) => setReviews(updatedReviews)) // Update reviews after submission
+          .catch(() => alert("Failed to add review"));
       });
+    } else {
+      alert("Geolocation is not supported by this browser.");
+    }
   };
 
   // Function to calculate distance between two geographic points
@@ -111,8 +143,7 @@ const SearchBarbershops = () => {
       Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
       Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c;
-    return d.toFixed(2); // Return distance
+    return (R * c).toFixed(2);
   };
 
   // Function to render the polyline on the map if a route is available
@@ -168,8 +199,59 @@ const SearchBarbershops = () => {
         {barbershops.map((shop, idx) => (
           <Marker key={idx} position={[shop.latitude, shop.longitude]}>
             <Popup>
-              {shop.name} <br /> {shop.address}
-              <br />
+              <h4>{shop.name}</h4>
+              <p>{shop.address}</p>
+              <p>{shop.distance} meters away</p>
+              <ul>
+                {reviews.length > 0 ? (
+                  reviews.map((review, idx) => (
+                    <li key={idx}>
+                      {review.rating} stars: {review.comment}
+                    </li>
+                  ))
+                ) : (
+                  <p>No reviews available for this barbershop.</p>
+                )}
+              </ul>
+
+              {/* Review form */}
+              <div className="mt-3">
+                <h5>Add a Review:</h5>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const rating = parseInt(e.target.elements.rating.value, 10);
+                    const comment = e.target.elements.comment.value;
+                    handleAddReview(shop.place_id, rating, comment);
+                  }}
+                >
+                  <div className="mb-3">
+                    <label htmlFor="rating">Rating:</label>
+                    <select id="rating" name="rating" className="form-control">
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-3">
+                    <label htmlFor="comment">Comment:</label>
+                    <textarea
+                      id="comment"
+                      name="comment"
+                      className="form-control"
+                      rows="3"
+                    ></textarea>
+                  </div>
+
+                  <button type="submit" className="btn btn-primary">
+                    Submit Review
+                  </button>
+                </form>
+              </div>
+
               <button
                 onClick={() => handleSelectBarbershop(shop)}
                 className="btn btn-sm btn-info mt-2"
@@ -186,6 +268,7 @@ const SearchBarbershops = () => {
         )}
         {renderDirections()}
       </MapContainer>
+
       <div className="mt-4">
         <h3>Barbershops:</h3>
         <ul className="list-group">
