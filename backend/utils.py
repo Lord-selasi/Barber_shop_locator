@@ -25,10 +25,13 @@ def fetch_barbershops_from_google(lat, lng, radius):
     data = response.json()
     
     shops = [{
+        
         'name': place.get('name'),
         'address': place.get('vicinity'),
         'latitude': place['geometry']['location']['lat'],
-        'longitude': place['geometry']['location']['lng']
+        'longitude': place['geometry']['location']['lng'],
+        'place_id': place.get('place_id')
+         
     } for place in data.get('results', [])]
     
     redis_client.set(cache_key, json.dumps(shops), ex=3600)
@@ -55,3 +58,5 @@ def fetch_directions_from_google(origin_lat, origin_lng, dest_lat, dest_lng):
     polyline_points.append((steps[-1]['end_location']['lat'], steps[-1]['end_location']['lng']))
     
     return polyline_points
+
+
