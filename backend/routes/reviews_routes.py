@@ -63,3 +63,6 @@ def get_reviews(place_id):
         'comment': review.comment,
         'created_at': review.created_at
     } for review in reviews])
+
+
+
