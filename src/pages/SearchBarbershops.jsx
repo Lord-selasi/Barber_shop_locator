@@ -7,52 +7,63 @@ import {
   Popup,
   Polyline,
   Tooltip,
+  useMap,
 } from "react-leaflet";
-import "bootstrap/dist/css/bootstrap.min.css"; // Importing Bootstrap for styling
-import "leaflet/dist/leaflet.css"; // Importing Leaflet CSS for the map
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "leaflet.heat";
 
 const SearchBarbershops = () => {
-  const [position, setPosition] = useState(null); // User's location
-  const [radius, setRadius] = useState(""); // Search radius
+  // State management
+  const [position, setPosition] = useState(null); // User's current location
+  const [isLoading, setIsLoading] = useState(true); // Loading state
+  const [radius, setRadius] = useState(""); // Search radius input
   const [barbershops, setBarbershops] = useState([]); // List of barbershops
-  const [selectedBarbershop, setSelectedBarbershop] = useState(null); // Selected barbershop
+  const [selectedBarbershop, setSelectedBarbershop] = useState(null); // Selected barbershop for reviews
   const [reviews, setReviews] = useState([]); // Reviews for the selected barbershop
   const [error, setError] = useState(null); // Error messages
-  const [routePolyline, setRoutePolyline] = useState([]); // Route directions
+  const [routePolyline, setRoutePolyline] = useState([]); // Directions polyline
+  const [isHeatmapEnabled, setIsHeatmapEnabled] = useState(false); // Heatmap toggle
+  const [heatmapLayer, setHeatmapLayer] = useState(null); // Heatmap layer
 
-  // useEffect to get the user's current location on component mount
+  // Fetch user's geolocation
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setPosition([latitude, longitude]);
+          setIsLoading(false);
         },
-        (error) => {
-          setError(error.message);
+        () => {
+          setError(
+            "Unable to retrieve location. Please enable location access."
+          );
+          setIsLoading(false);
         }
       );
     } else {
       setError("Geolocation is not supported by this browser.");
+      setIsLoading(false);
     }
   }, []);
 
-  // Function to search for barbershops within the specified radius
+  // Search for barbershops
   const handleSearch = () => {
-    if (!radius) {
-      setError("Please enter a radius");
+    if (!radius || !position) {
+      alert("Please enter a radius and wait for geolocation.");
       return;
     }
 
-    const url = `http://127.0.0.1:5000/api/barbershops?lat=${position[0]}&lng=${position[1]}&radius=${radius}`;
-    fetch(url)
-      .then((response) => response.json())
+    fetch(
+      `http://127.0.0.1:5000/api/barbershops?lat=${position[0]}&lng=${position[1]}&radius=${radius}`
+    )
+      .then((res) => res.json())
       .then((data) => {
         if (data.error) {
           setError(data.error);
-          setBarbershops([]);
         } else {
-          setError(null);
           const updatedBarbershops = data.map((shop) => ({
             ...shop,
             distance: calculateDistance(
@@ -65,18 +76,109 @@ const SearchBarbershops = () => {
           setBarbershops(
             updatedBarbershops.sort((a, b) => a.distance - b.distance)
           );
+          createHeatmapLayer(updatedBarbershops); // Pass data with review_count
         }
       })
-      .catch(() => setError("Failed to fetch barbershops"));
+      .catch(() => setError("Failed to fetch barbershops."));
   };
 
-  // Function to select a barbershop, fetch directions and reviews
-  const handleSelectBarbershop = (shop) => {
-    setSelectedBarbershop(shop);
+  // Create heatmap layer based on review count
+  const createHeatmapLayer = (data) => {
+    const heatmapPoints = data.map((shop) => [
+      shop.latitude,
+      shop.longitude,
+      shop.review_count || 1, // Use review_count as intensity, default to 1
+    ]);
+    const layer = L.heatLayer(heatmapPoints, {
+      radius: 30,
+      blur: 15,
+      maxZoom: 17,
+      gradient: {
+        0.1: "blue",
+        0.3: "lime",
+        0.6: "yellow",
+        0.9: "red",
+      },
+    });
+    setHeatmapLayer(layer);
+  };
 
-    // Fetch directions
-    const directionsUrl = `http://127.0.0.1:5000/api/directions?origin_lat=${position[0]}&origin_lng=${position[1]}&dest_lat=${shop.latitude}&dest_lng=${shop.longitude}`;
-    fetch(directionsUrl)
+  // Toggle heatmap visibility
+  const toggleHeatmap = () => {
+    setIsHeatmapEnabled(!isHeatmapEnabled);
+  };
+
+  // Control heatmap on the map
+  const HeatmapControl = () => {
+    const map = useMap();
+    useEffect(() => {
+      if (isHeatmapEnabled && heatmapLayer) {
+        map.addLayer(heatmapLayer);
+      } else if (heatmapLayer) {
+        map.removeLayer(heatmapLayer);
+      }
+    }, [isHeatmapEnabled, heatmapLayer, map]);
+
+    return null;
+  };
+
+  // Fetch reviews for a barbershop
+  const handleFetchReviews = (placeId) => {
+    fetch(`http://127.0.0.1:5000/api/barbershops/${placeId}/reviews`)
+      .then((response) => response.json())
+      .then((data) => {
+        setReviews(data);
+        setSelectedBarbershop(
+          barbershops.find((shop) => shop.place_id === placeId)
+        );
+      })
+      .catch(() => alert("Failed to fetch reviews."));
+  };
+
+  // Add a review
+  const handleAddReview = (placeId, name, address, rating, comment) => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        fetch(`http://127.0.0.1:5000/api/barbershops/${placeId}/reviews`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rating,
+            comment,
+            user_lat: userLat,
+            user_lng: userLng,
+            barbershop_name: name,
+            barbershop_address: address,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              alert(`Failed to add review: ${data.error}`);
+            } else {
+              alert(data.message);
+              handleFetchReviews(placeId);
+            }
+          })
+          .catch(() => alert("Failed to add review."));
+      },
+      (error) => alert(`Geolocation error: ${error.message}`)
+    );
+  };
+
+  // Get directions to a barbershop
+  const handleGetDirections = (shop) => {
+    fetch(
+      `http://127.0.0.1:5000/api/directions?origin_lat=${position[0]}&origin_lng=${position[1]}&dest_lat=${shop.latitude}&dest_lng=${shop.longitude}`
+    )
       .then((response) => response.json())
       .then((data) => {
         if (data.error) {
@@ -89,52 +191,12 @@ const SearchBarbershops = () => {
           setRoutePolyline(routePolyline);
         }
       })
-      .catch(() => setError("Failed to fetch directions"));
-
-    // Fetch reviews
-    const reviewsUrl = `http://127.0.0.1:5000/api/barbershops/${shop.place_id}/reviews`;
-    fetch(reviewsUrl)
-      .then((response) => response.json())
-      .then((data) => setReviews(data))
-      .catch(() => setError("Failed to fetch reviews"));
+      .catch(() => alert("Failed to fetch directions."));
   };
 
-  // Function to add a review
-  const handleAddReview = (placeId, rating, comment) => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
-
-        fetch(`http://127.0.0.1:5000/api/barbershops/${placeId}/reviews`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            rating,
-            comment,
-            user_lat: userLat, // Send user's latitude
-            user_lng: userLng, // Send user's longitude
-          }),
-        })
-          .then((response) => response.json())
-          .then((data) => alert(data.message)) // Alert success message
-          .then(() =>
-            fetch(`http://127.0.0.1:5000/api/barbershops/${placeId}/reviews`)
-          )
-          .then((response) => response.json())
-          .then((updatedReviews) => setReviews(updatedReviews)) // Update reviews after submission
-          .catch(() => alert("Failed to add review"));
-      });
-    } else {
-      alert("Geolocation is not supported by this browser.");
-    }
-  };
-
-  // Function to calculate distance between two geographic points
+  // Calculate distance between two points
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
-    const R = 6371e3; // Earth radius in meters
+    const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
     const φ2 = (lat2 * Math.PI) / 180;
     const Δφ = ((lat2 - lat1) * Math.PI) / 180;
@@ -146,152 +208,159 @@ const SearchBarbershops = () => {
     return (R * c).toFixed(2);
   };
 
-  // Function to render the polyline on the map if a route is available
-  const renderDirections = () => {
-    if (!routePolyline || routePolyline.length === 0) return null;
-
-    return (
-      <Polyline positions={routePolyline} color="blue">
-        <Tooltip sticky>Route to barbershop</Tooltip>
-      </Polyline>
-    );
-  };
-
   return (
     <div className="container text-center mt-4">
-      <div className="d-flex justify-content-between mb-3 align-items-center">
-        <h2
-          className="text-primary fw-bold"
-          style={{
-            fontSize: "2rem",
-            textShadow: "2px 2px 5px rgba(0, 0, 0, 0.3)",
-            letterSpacing: "1px",
-            background: "linear-gradient(45deg, #007bff, #6610f2)",
-            WebkitBackgroundClip: "text",
-            color: "transparent",
-          }}
-        >
-          Hey! Are You Ready For Your Barbershops Search?
-        </h2>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2 className="text-primary fw-bold">Find Your Perfect Cut</h2>
         <Link to="/" className="btn btn-secondary">
           Home
         </Link>
       </div>
-      <input
-        type="number"
-        value={radius}
-        onChange={(e) => setRadius(e.target.value)}
-        placeholder="Enter search radius for nearby barbershops (meters)"
-        className="form-control mt-2 mb-3"
-        style={{ maxWidth: "300px", margin: "0 auto" }}
-      />
-      <button onClick={handleSearch} className="btn btn-success mb-3">
-        Search
-      </button>
-      {error && <p className="text-danger">{error}</p>}
-      <MapContainer
-        center={position || [45.550288, -94.1555175]}
-        zoom={13}
-        style={{ height: "50vh", width: "100%" }}
-        whenReady={(map) => position && map.target.setView(position, 13)}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {barbershops.map((shop, idx) => (
-          <Marker key={idx} position={[shop.latitude, shop.longitude]}>
-            <Popup>
-              <h4>{shop.name}</h4>
-              <p>{shop.address}</p>
-              <p>{shop.distance} meters away</p>
-              <ul>
-                {reviews.length > 0 ? (
-                  reviews.map((review, idx) => (
-                    <li key={idx}>
-                      {review.rating} stars: {review.comment}
-                    </li>
-                  ))
-                ) : (
-                  <p>No reviews available for this barbershop.</p>
-                )}
-              </ul>
-
-              {/* Review form */}
-              <div className="mt-3">
-                <h5>Add a Review:</h5>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const rating = parseInt(e.target.elements.rating.value, 10);
-                    const comment = e.target.elements.comment.value;
-                    handleAddReview(shop.place_id, rating, comment);
-                  }}
-                >
-                  <div className="mb-3">
-                    <label htmlFor="rating">Rating:</label>
-                    <select id="rating" name="rating" className="form-control">
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                      <option value="4">4</option>
-                      <option value="5">5</option>
-                    </select>
-                  </div>
-
-                  <div className="mb-3">
-                    <label htmlFor="comment">Comment:</label>
-                    <textarea
-                      id="comment"
-                      name="comment"
-                      className="form-control"
-                      rows="3"
-                    ></textarea>
-                  </div>
-
-                  <button type="submit" className="btn btn-primary">
-                    Submit Review
+      {isLoading && <p>Loading your location...</p>}
+      {!isLoading && (
+        <>
+          <input
+            type="number"
+            value={radius}
+            onChange={(e) => setRadius(e.target.value)}
+            placeholder="Enter search radius (meters)"
+            className="form-control mt-2 mb-3"
+            style={{ maxWidth: "300px", margin: "0 auto" }}
+          />
+          <button onClick={handleSearch} className="btn btn-success mb-2">
+            Search
+          </button>
+          <button onClick={toggleHeatmap} className="btn btn-info ms-2">
+            {isHeatmapEnabled ? "Disable Heatmap" : "Enable Heatmap"}
+          </button>
+          <MapContainer
+            center={position || [45.550288, -94.1555175]}
+            zoom={13}
+            style={{ height: "50vh", width: "100%" }}
+          >
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <HeatmapControl />
+            {barbershops.map((shop, idx) => (
+              <Marker key={idx} position={[shop.latitude, shop.longitude]}>
+                <Popup>
+                  <h4>{shop.name}</h4>
+                  <p>{shop.address}</p>
+                  <button
+                    onClick={() => handleFetchReviews(shop.place_id)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    View Reviews
                   </button>
-                </form>
-              </div>
-
-              <button
-                onClick={() => handleSelectBarbershop(shop)}
-                className="btn btn-sm btn-info mt-2"
-              >
-                Get Directions
-              </button>
-            </Popup>
-          </Marker>
-        ))}
-        {position && (
-          <Marker position={position}>
-            <Popup>My Location</Popup>
-          </Marker>
-        )}
-        {renderDirections()}
-      </MapContainer>
-
-      <div className="mt-4">
-        <h3>Barbershops:</h3>
-        <ul className="list-group">
-          {barbershops.map((shop, idx) => (
-            <li
-              key={idx}
-              className="list-group-item d-flex justify-content-between align-items-center"
-            >
-              <div>
-                <strong>{shop.name}</strong>
-                <p>{shop.address}</p>
-                <p>{shop.distance} meters away</p>
-              </div>
-              <button
-                onClick={() => handleSelectBarbershop(shop)}
-                className="btn btn-sm btn-primary"
-              >
-                Show on Map
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+                  <button
+                    onClick={() => handleGetDirections(shop)}
+                    className="btn btn-success btn-sm mt-2"
+                  >
+                    Get Directions
+                  </button>
+                </Popup>
+              </Marker>
+            ))}
+            {routePolyline.length > 0 && (
+              <Polyline positions={routePolyline} color="blue">
+                <Tooltip sticky>Route to Barbershop</Tooltip>
+              </Polyline>
+            )}
+          </MapContainer>
+          <div className="row mt-4">
+            <div className="col-md-6">
+              <h3>Barbershops</h3>
+              <ul className="list-group">
+                {barbershops.map((shop, idx) => (
+                  <li
+                    key={idx}
+                    className="list-group-item d-flex justify-content-between align-items-center"
+                  >
+                    <div>
+                      <strong>{shop.name}</strong>
+                      <p>{shop.address}</p>
+                      <p>{shop.distance} meters away</p>
+                    </div>
+                    <div>
+                      <button
+                        onClick={() => handleFetchReviews(shop.place_id)}
+                        className="btn btn-primary btn-sm me-2"
+                      >
+                        View Reviews
+                      </button>
+                      <button
+                        onClick={() => handleGetDirections(shop)}
+                        className="btn btn-success btn-sm"
+                      >
+                        Get Directions
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="col-md-6">
+              {selectedBarbershop && (
+                <>
+                  <h3>Reviews for {selectedBarbershop.name}</h3>
+                  <ul className="list-group">
+                    {reviews.length > 0 ? (
+                      reviews.map((review, idx) => (
+                        <li key={idx} className="list-group-item">
+                          <strong>{review.rating} stars:</strong>{" "}
+                          {review.comment}
+                        </li>
+                      ))
+                    ) : (
+                      <p>No reviews available.</p>
+                    )}
+                  </ul>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const rating = parseInt(e.target.rating.value, 10);
+                      const comment = e.target.comment.value;
+                      handleAddReview(
+                        selectedBarbershop.place_id,
+                        selectedBarbershop.name,
+                        selectedBarbershop.address,
+                        rating,
+                        comment
+                      );
+                    }}
+                  >
+                    <div className="mb-3">
+                      <label htmlFor="rating">Rating:</label>
+                      <select
+                        id="rating"
+                        name="rating"
+                        className="form-control"
+                      >
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                      </select>
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="comment">Comment:</label>
+                      <textarea
+                        id="comment"
+                        name="comment"
+                        className="form-control"
+                        rows="3"
+                      ></textarea>
+                    </div>
+                    <button type="submit" className="btn btn-primary">
+                      Submit Review
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
