@@ -52,7 +52,7 @@ const SearchBarbershops = () => {
   // Search for barbershops
   const handleSearch = () => {
     if (!radius || !position) {
-      alert("Please enter a radius and wait for geolocation.");
+      alert("Please enter a radius or enable location.");
       return;
     }
 
